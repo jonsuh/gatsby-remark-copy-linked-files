@@ -9,35 +9,37 @@ const imageSize = require(`probe-image-size`)
 
 const DEPLOY_DIR = `public`
 
-const invalidDestinationDirMessage = dir =>
-  `[gatsby-remark-copy-linked-files You have supplied an invalid destination directory. The destination directory must be a child but was: ${dir}`
-
-// dir must be a child
-const destinationDirIsValid = dir => !path.relative(`./`, dir).startsWith(`..`)
-
-const validateDestinationDir = dir =>
-  !dir || (dir && destinationDirIsValid(dir))
-
 const newFileName = linkNode =>
   `${linkNode.name}-${linkNode.internal.contentDigest}.${linkNode.extension}`
 
-const newPath = (linkNode, destinationDir) => {
-  if (destinationDir) {
+const destinationDirs = absolutePath => {
+  let dirsArray = path.dirname(absolutePath).split(path.sep)
+  const bumpIndex = dirsArray.indexOf("pages") === -1 ? 1 : 2
+  const arrayIndex = dirsArray.indexOf("src") + bumpIndex
+  if (dirsArray[arrayIndex] === "blog") {
+    dirsArray.splice(arrayIndex + 1, 1)
+  }
+
+  return dirsArray.slice(arrayIndex, dirsArray.length).join(path.sep)
+}
+
+const newPath = (linkNode, relativeDirs) => {
+  if (relativeDirs) {
     return path.posix.join(
       process.cwd(),
       DEPLOY_DIR,
-      destinationDir,
+      destinationDirs(linkNode.absolutePath),
       newFileName(linkNode)
     )
   }
   return path.posix.join(process.cwd(), DEPLOY_DIR, newFileName(linkNode))
 }
 
-const newLinkURL = (linkNode, destinationDir, pathPrefix) => {
+const newLinkURL = (linkNode, relativeDirs, pathPrefix) => {
   const linkPaths = [
     `/`,
     pathPrefix,
-    destinationDir,
+    destinationDirs(linkNode.absolutePath),
     newFileName(linkNode),
   ].filter(function(lpath) {
     if (lpath) return true
@@ -64,9 +66,7 @@ module.exports = (
   const defaults = {
     ignoreFileExtensions: [`png`, `jpg`, `jpeg`, `bmp`, `tiff`],
   }
-  const { destinationDir } = pluginOptions
-  if (!validateDestinationDir(destinationDir))
-    return Promise.reject(invalidDestinationDirMessage(destinationDir))
+  const { relativeDirs } = pluginOptions
 
   const options = _.defaults(pluginOptions, defaults)
 
@@ -89,12 +89,12 @@ module.exports = (
         return null
       })
       if (linkNode && linkNode.absolutePath) {
-        const newFilePath = newPath(linkNode, options.destinationDir)
+        const newFilePath = newPath(linkNode, options.relativeDirs)
 
         // Prevent uneeded copying
         if (linkPath === newFilePath) return
 
-        const linkURL = newLinkURL(linkNode, options.destinationDir, pathPrefix)
+        const linkURL = newLinkURL(linkNode, options.relativeDirs, pathPrefix)
         link.url = linkURL
         filesToCopy.set(linkPath, newFilePath)
       }
@@ -206,9 +206,9 @@ module.exports = (
   visit(markdownAST, `html`, node => {
     const $ = cheerio.load(node.value)
 
-    // Handle Images
+    // Handle Images and custom figure
     const imageRefs = []
-    $(`img`).each(function() {
+    $(`img, figure`).each(function() {
       try {
         if (isRelativeUrl($(this).attr(`src`))) {
           imageRefs.push($(this))
