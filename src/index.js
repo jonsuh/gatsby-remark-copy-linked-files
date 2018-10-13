@@ -10,7 +10,8 @@ const imageSize = require(`probe-image-size`)
 const DEPLOY_DIR = `public`
 
 const newFileName = linkNode =>
-  `${linkNode.name}-${linkNode.internal.contentDigest}.${linkNode.extension}`
+  // `${linkNode.name}-${linkNode.internal.contentDigest}.${linkNode.extension}`
+  `${linkNode.name}.${linkNode.extension}`
 
 const destinationDirs = absolutePath => {
   let dirsArray = path.dirname(absolutePath).split(path.sep)
