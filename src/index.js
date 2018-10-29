@@ -65,6 +65,7 @@ module.exports = (
   pluginOptions = {}
 ) => {
   const defaults = {
+    customTags: [],
     ignoreFileExtensions: [`png`, `jpg`, `jpeg`, `bmp`, `tiff`],
   }
   const { relativeDirs } = pluginOptions
@@ -326,6 +327,34 @@ module.exports = (
         }
       } catch (err) {
         // Ignore
+      }
+    }
+
+    // Handle custom tags.
+    if (options.customTags.length > 0) {
+      const customRefs = []
+      $(options.customTags).each(function() {
+        try {
+          if (isRelativeUrl($(this).attr(`src`))) {
+            customRefs.push($(this))
+          }
+        } catch (err) {
+          // Ignore
+        }
+      })
+
+      for (let thisCustom of customRefs) {
+        try {
+          const ext = thisCustom
+            .attr(`src`)
+            .split(`.`)
+            .pop()
+          if (!options.ignoreFileExtensions.includes(ext)) {
+            generateImagesAndUpdateNode(thisCustom, node)
+          }
+        } catch (err) {
+          // Ignore
+        }
       }
     }
 
