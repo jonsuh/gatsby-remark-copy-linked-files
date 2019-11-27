@@ -205,7 +205,7 @@ module.exports = (
   })
 
   // For each HTML Node
-  visit(markdownAST, `html`, node => {
+  visit(markdownAST, [`html`, `jsx`], node => {
     const $ = cheerio.load(node.value)
 
     // Handle Images and custom figure
